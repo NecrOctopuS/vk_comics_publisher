@@ -9,14 +9,14 @@ def download_image(image_url, image_name):
         file.write(response.content)
 
 
-def count_total_number_of_comics():
+def get_total_number_of_comics():
     response = requests.get(f'http://xkcd.com/info.0.json')
     response.raise_for_status()
     return response.json()['num']
 
 
 def fetch_xkcd_random_comic_with_title_and_comment():
-    total_number = count_total_number_of_comics()
+    total_number = get_total_number_of_comics()
     comics_number = random.randint(1, total_number)
     response = requests.get(f'http://xkcd.com/{comics_number}/info.0.json')
     response.raise_for_status()
