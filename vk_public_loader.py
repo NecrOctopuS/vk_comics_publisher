@@ -6,6 +6,14 @@ from dotenv import load_dotenv
 API_VERSION = '5.101'
 
 
+class VkError(Exception):
+    pass
+
+
+class PhotoIsEmpty(Exception):
+    pass
+
+
 def load_image_to_url(image_name, upload_url):
     with open(f'{image_name}', 'rb') as file:
         files = {
@@ -47,12 +55,57 @@ def check_for_photo_is_empty(image_params, image_name):
         exit(-1)
 
 
-class VkError(Exception):
-    pass
+def get_response_for_get_wall_upload_server(group_id, access_vk_token):
+    url_get_wall_upload_server = 'https://api.vk.com/method/photos.getWallUploadServer'
+    params_get_wall_upload_server = {
+        'group_id': group_id,
+        'access_token': access_vk_token,
+        'v': API_VERSION
+    }
+    response = requests.get(url_get_wall_upload_server, params=params_get_wall_upload_server)
+    return response
 
 
-class PhotoIsEmpty(Exception):
-    pass
+def get_response_for_save_wall_photo(group_id, access_vk_token, image_params):
+    url_save_wall_photo = 'https://api.vk.com/method/photos.saveWallPhoto'
+    params_save_wall_photo = {
+        'server': image_params['server'],
+        'photo': image_params['photo'],
+        'hash': image_params['hash'],
+        'group_id': group_id,
+        'access_token': access_vk_token,
+        'v': API_VERSION
+    }
+    response = requests.post(url_save_wall_photo, params=params_save_wall_photo)
+    return response
+
+
+def get_response_for_wall_post(group_id, access_vk_token, image_title, loaded_image):
+    url_wall_post = 'https://api.vk.com/method/wall.post'
+    params_wall_post = {
+        'owner_id': -group_id,
+        'from_group': 1,
+        'message': image_title,
+        'attachments': f'photo{loaded_image["response"][0]["owner_id"]}_{loaded_image["response"][0]["id"]}',
+        'access_token': access_vk_token,
+        'v': API_VERSION
+    }
+    response = requests.get(url_wall_post, params=params_wall_post)
+    return response
+
+
+def get_response_wall_create_commnet(group_id, access_vk_token, post_id, image_comment):
+    url_wall_create_comment = 'https://api.vk.com/method/wall.createComment'
+    params_wall_create_comment = {
+        'owner_id': -group_id,
+        'post_id': post_id,
+        'from_group': group_id,
+        'message': image_comment,
+        'access_token': access_vk_token,
+        'v': API_VERSION
+    }
+    response = requests.get(url_wall_create_comment, params=params_wall_create_comment)
+    return response
 
 
 def main():
@@ -60,52 +113,20 @@ def main():
     CLIENT_ID = os.getenv('CLIENT_ID')
     ACCESS_VK_TOKEN = os.getenv('ACCESS_VK_TOKEN')
     GROUP_ID = int(os.getenv('GROUP_ID'))
-    url_get_wall_upload_server = 'https://api.vk.com/method/photos.getWallUploadServer'
-    params_get_wall_upload_server = {
-        'group_id': GROUP_ID,
-        'access_token': ACCESS_VK_TOKEN,
-        'v': API_VERSION
-    }
-    response = requests.get(url_get_wall_upload_server, params=params_get_wall_upload_server)
+    response = get_response_for_get_wall_upload_server(GROUP_ID, ACCESS_VK_TOKEN)
     check_for_vk_error(response)
     upload_url = response.json()['response']['upload_url']
     image_name, image_title, image_comment = fetch_xkcd.fetch_xkcd_random_comic_with_title_and_comment()
-    url_save_wall_photo = 'https://api.vk.com/method/photos.saveWallPhoto'
     image_params = load_image_to_url(image_name, upload_url)
     check_for_photo_is_empty(image_params, image_name)
-    params_save_wall_photo = {
-        'server': image_params['server'],
-        'photo': image_params['photo'],
-        'hash': image_params['hash'],
-        'group_id': GROUP_ID,
-        'access_token': ACCESS_VK_TOKEN,
-        'v': API_VERSION
-    }
-    response = requests.post(url_save_wall_photo, params=params_save_wall_photo)
-    url_wall_post = 'https://api.vk.com/method/wall.post'
+    response = get_response_for_save_wall_photo(GROUP_ID, ACCESS_VK_TOKEN, image_params)
     check_for_vk_error_and_delete_image(response, image_name)
     loaded_image = response.json()
-    params_wall_post = {
-        'owner_id': -GROUP_ID,
-        'from_group': 1,
-        'message': image_title,
-        'attachments': f'photo{loaded_image["response"][0]["owner_id"]}_{loaded_image["response"][0]["id"]}',
-        'access_token': ACCESS_VK_TOKEN,
-        'v': API_VERSION
-    }
-    response = requests.get(url_wall_post, params=params_wall_post)
+    response = get_response_for_wall_post(GROUP_ID, ACCESS_VK_TOKEN, image_title, loaded_image)
     check_for_vk_error_and_delete_image(response, image_name)
     post_id = response.json()['response']['post_id']
-    url_wall_create_comment = 'https://api.vk.com/method/wall.createComment'
-    params_wall_create_comment = {
-        'owner_id': -GROUP_ID,
-        'post_id': post_id,
-        'from_group': GROUP_ID,
-        'message': image_comment,
-        'access_token': ACCESS_VK_TOKEN,
-        'v': API_VERSION
-    }
-    requests.get(url_wall_create_comment, params=params_wall_create_comment)
+    response = get_response_wall_create_commnet(GROUP_ID, ACCESS_VK_TOKEN, post_id, image_comment)
+    check_for_vk_error_and_delete_image(response, image_name)
     os.remove(image_name)
 
 
