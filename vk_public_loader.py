@@ -94,7 +94,7 @@ def get_response_for_wall_post(group_id, access_vk_token, image_title, loaded_im
     return response
 
 
-def get_response_wall_create_commnet(group_id, access_vk_token, post_id, image_comment):
+def get_response_wall_create_comment(group_id, access_vk_token, post_id, image_comment):
     url_wall_create_comment = 'https://api.vk.com/method/wall.createComment'
     params_wall_create_comment = {
         'owner_id': -group_id,
@@ -110,22 +110,22 @@ def get_response_wall_create_commnet(group_id, access_vk_token, post_id, image_c
 
 def main():
     load_dotenv()
-    CLIENT_ID = os.getenv('CLIENT_ID')
-    ACCESS_VK_TOKEN = os.getenv('ACCESS_VK_TOKEN')
-    GROUP_ID = int(os.getenv('GROUP_ID'))
-    response = get_response_for_get_wall_upload_server(GROUP_ID, ACCESS_VK_TOKEN)
+    client_id = os.getenv('CLIENT_ID')
+    access_vk_token = os.getenv('ACCESS_VK_TOKEN')
+    group_id = int(os.getenv('GROUP_ID'))
+    response = get_response_for_get_wall_upload_server(group_id, access_vk_token)
     check_for_vk_error(response)
     upload_url = response.json()['response']['upload_url']
     image_name, image_title, image_comment = fetch_xkcd.fetch_xkcd_random_comic_with_title_and_comment()
     image_params = load_image_to_url(image_name, upload_url)
     check_for_photo_is_empty(image_params, image_name)
-    response = get_response_for_save_wall_photo(GROUP_ID, ACCESS_VK_TOKEN, image_params)
+    response = get_response_for_save_wall_photo(group_id, access_vk_token, image_params)
     check_for_vk_error_and_delete_image(response, image_name)
     loaded_image = response.json()
-    response = get_response_for_wall_post(GROUP_ID, ACCESS_VK_TOKEN, image_title, loaded_image)
+    response = get_response_for_wall_post(group_id, access_vk_token, image_title, loaded_image)
     check_for_vk_error_and_delete_image(response, image_name)
     post_id = response.json()['response']['post_id']
-    response = get_response_wall_create_commnet(GROUP_ID, ACCESS_VK_TOKEN, post_id, image_comment)
+    response = get_response_wall_create_comment(group_id, access_vk_token, post_id, image_comment)
     check_for_vk_error_and_delete_image(response, image_name)
     os.remove(image_name)
 
